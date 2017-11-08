@@ -3,7 +3,8 @@ var util = require('util')
 var EventEmitter = require('events').EventEmitter
 
 var setupLogging = require('./logs')
-setupLogging(process.env.PN532_LOGGING)
+setupLogging('debug')
+// setupLogging(process.env.PN532_LOGGING)
 var logger = require('winston').loggers.get('pn532')
 
 var FrameEmitter = require('./frame_emitter').FrameEmitter
@@ -125,10 +126,10 @@ class PN532 extends EventEmitter {
     logger.info('Getting general status...')
 
     return this.sendCommand([c.COMMAND_GET_GENERAL_STATUS])
-            .then((frame) => {
-              var body = frame.getDataBody()
-              return body
-            })
+      .then((frame) => {
+        var body = frame.getDataBody()
+        return body
+      })
   }
 
   scanTag () {
@@ -161,7 +162,8 @@ class PN532 extends EventEmitter {
           return {
             ATQA: body.slice(2, 4), // SENS_RES
             SAK: body[4],           // SEL_RES
-            uid: uid
+            uid: uid,
+            tagNumber: tagNumber
           }
         }
       })
@@ -232,15 +234,33 @@ class PN532 extends EventEmitter {
       })
   }
 
+  parseData (data) {
+    let returnData = {
+      aid: []
+    }
+    let jsonData = JSON.parse(JSON.stringify(data))
+
+    for (var i = 0; i < jsonData.data.length; i++) {
+      if (i < jsonData.data.length - 1 && jsonData.data[i] === 79 && jsonData.data[i + 1] === 7) {
+        console.log('FOUND IT')
+        returnData.aid = JSON.parse(JSON.stringify(jsonData.data)).splice(i + 2, i + 9)
+      }
+    }
+    console.log('data information', data.length)
+    return data
+    // 6f 2d 84 0e 32 50 41 59 2e 53 59 53 2e 44 44 46 30 31 a5 1b bf 0c 18 61 16 4f 07 a0 00 00 00 03 10 10 50 0b 56 69 73 61 20 43 72 65 64 69 74 90 00
+  }
+
   readCard (options) {
-    logger.info('Select...')
+    logger.info('Read Card Data...')
 
     options = options || {}
 
     var tagNumber = options.tagNumber || 0x01
     var blockAddress = options.blockAddress || 0x01
-    var readRecord = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x0C, 0x00 ] //InDataExchange
-    var readRecordVisa = [ 0x40, 0x01, 0x00, 0xB2, 0x02, 0x0C, 0x00, 0x00 ]
+    var readRecord = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x0C, 0x00 ] // InDataExchange
+    var readCardInfoVisa = [ 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10 ] // InDataExchange
+    var readRecordVisa = [ 0x00, 0xB2, 0x02, 0x0C, 0x00, 0x00 ]
   	var readRecordMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x14, 0x00, 0x00 ]
   	var readPaylogVisa = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x8C, 0x00, 0x00 ]
   	var readPaylogMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x5C, 0x00, 0x00 ]

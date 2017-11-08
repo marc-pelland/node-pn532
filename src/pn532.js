@@ -12,6 +12,7 @@ var frame = require('./frame')
 var DataFrame = frame.DataFrame
 var AckFrame = frame.AckFrame
 var c = require('./constants')
+var TLV = require('node-tlv')
 
 class PN532 extends EventEmitter {
     /*
@@ -234,6 +235,12 @@ class PN532 extends EventEmitter {
       })
   }
 
+  parseApduResponse (id) {
+    // let tlvData = {}
+    return TLV.parse(id)
+    // return tlvData
+  }
+
   parseData (data) {
     let returnData = {
       aid: []
@@ -243,12 +250,48 @@ class PN532 extends EventEmitter {
     for (var i = 0; i < jsonData.data.length; i++) {
       if (i < jsonData.data.length - 1 && jsonData.data[i] === 79 && jsonData.data[i + 1] === 7) {
         console.log('FOUND IT')
-        returnData.aid = JSON.parse(JSON.stringify(jsonData.data)).splice(i + 2, i + 9)
+        returnData.aid = JSON.parse(JSON.stringify(jsonData.data)).splice(i + 2, 7)
+        for (var j in returnData.aid) {
+          returnData.aid[j] = returnData.aid[j].toString(16)
+        }
+        returnData.aid = returnData.aid.join('')
       }
     }
-    console.log('data information', data.length)
-    return data
+    console.log('data information', returnData)
+    return returnData
     // 6f 2d 84 0e 32 50 41 59 2e 53 59 53 2e 44 44 46 30 31 a5 1b bf 0c 18 61 16 4f 07 a0 00 00 00 03 10 10 50 0b 56 69 73 61 20 43 72 65 64 69 74 90 00
+  }
+
+  getPDOL (options) {
+    logger.info('Read Card Data...')
+
+    options = options || {}
+
+    var readCard = [ 0x00, 0xA4, 0x04, 0x00, 0x07, 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10, 0x00 ]
+
+    var tagNumber = options.tagNumber || 0x01
+    var blockAddress = options.blockAddress || 0x01
+    var commandBuffer = [
+      c.COMMAND_IN_DATA_EXCHANGE,
+      tagNumber
+    ]
+
+    commandBuffer = commandBuffer.concat(readCard)
+    return this.sendCommand(commandBuffer)
+      .then((frame) => {
+        var body = frame.getDataBody()
+        logger.debug('Frame data from block read:', util.inspect(body))
+
+        var status = body[0]
+
+        if (status === 0x13) {
+          logger.warn('The data format does not match to the specification.')
+        }
+        var block = body.slice(1, body.length - 1) // skip status byte and last byte (not part of memory)
+        // var unknown = body[body.length];
+
+        return block
+      })
   }
 
   readCard (options) {
@@ -258,19 +301,82 @@ class PN532 extends EventEmitter {
 
     var tagNumber = options.tagNumber || 0x01
     var blockAddress = options.blockAddress || 0x01
-    var readRecord = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x0C, 0x00 ] // InDataExchange
-    var readCardInfoVisa = [ 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10 ] // InDataExchange
+
+        // 0x0C is between 12 and 28
+        // 0x02 is between 0 and 10
+
+    var readRecord = [ 0x00, 0xB2, 0x02, 0x0D, 0x00 ] // InDataExchange
+
+    for (var m = 12; m <= 28; m++) {
+      for (var n = 0; n <= 12; n++) {
+
+      }
+    }
+
+
+    var readCardInfoVisa = [ 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10 ] // InDataExchange
     var readRecordVisa = [ 0x00, 0xB2, 0x02, 0x0C, 0x00, 0x00 ]
   	var readRecordMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x14, 0x00, 0x00 ]
   	var readPaylogVisa = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x8C, 0x00, 0x00 ]
   	var readPaylogMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x5C, 0x00, 0x00 ]
-
+    var readCardSize = [ 0x00, 0xA4, 0x04, 0x00, 0x07, 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10, 0x00, 0x00 ]
+    var readRecord2 = [0x00, 0xb2, 0x01, 0x0c, 0x00 ]
+    // var pdol = [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]
+    var req = [ 0x00, 0xb2, 0x03, 0x0c, 0x00 ]
+// A0 00 00 00 03 10 10
     var commandBuffer = [
       c.COMMAND_IN_DATA_EXCHANGE,
       tagNumber
     ]
 
-    commandBuffer = commandBuffer.concat(readRecordVisa)
+    commandBuffer = commandBuffer.concat(readRecord)
+
+    return this.sendCommand(commandBuffer)
+      .then((frame) => {
+        var body = frame.getDataBody()
+        logger.debug('Frame data from block read:', util.inspect(body))
+
+        var status = body[0]
+
+        if (status === 0x13) {
+          logger.warn('The data format does not match to the specification.')
+        }
+        var block = body.slice(1, body.length - 1) // skip status byte and last byte (not part of memory)
+        // var unknown = body[body.length];
+
+        return block
+      })
+  }
+
+  readCard2 (options) {
+    logger.info('Read Card Data...')
+
+    options = options || {}
+
+    var tagNumber = options.tagNumber || 0x01
+    var blockAddress = options.blockAddress || 0x01
+
+    // 0x0C is between 12 and 28
+    // 0x02 is between 0 and 10
+
+    var readRecord = [ 0x00, 0xB2, 0x00, 0x0C, 0x00 ] // InDataExchange
+
+    var readCardInfoVisa = [ 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10 ] // InDataExchange
+    var readRecordVisa = [ 0x00, 0xB2, 0x02, 0x0C, 0x00, 0x00 ]
+  	var readRecordMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x14, 0x00, 0x00 ]
+  	var readPaylogVisa = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x8C, 0x00, 0x00 ]
+  	var readPaylogMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x5C, 0x00, 0x00 ]
+    var readCardSize = [ 0x00, 0xA4, 0x04, 0x00, 0x07, 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10, 0x00, 0x00 ]
+    var readRecord2 = [0x00, 0xb2, 0x01, 0x0c, 0x00 ]
+    // var pdol = [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]
+    var req = [ 0x00, 0xb2, 0x03, 0x0c, 0x00 ]
+// A0 00 00 00 03 10 10
+    var commandBuffer = [
+      c.COMMAND_IN_DATA_EXCHANGE,
+      tagNumber
+    ]
+
+    commandBuffer = commandBuffer.concat(readRecord)
 
     return this.sendCommand(commandBuffer)
       .then((frame) => {

@@ -18,7 +18,7 @@ class FrameEmitter extends EventEmitter {
   constructor (hal) {
     super()
     this.hal = hal
-    this.buffer = Buffer.alloc()
+    this.buffer = new Buffer(0)
 
     logger.debug('listening to data')
 

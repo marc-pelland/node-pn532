@@ -213,7 +213,7 @@ class PN532 extends EventEmitter {
       tagNumber
     ]
 
-    commandBuffer.concat(selectApdu)
+    commandBuffer = commandBuffer.concat(selectApdu)
 
     return this.sendCommand(commandBuffer)
       .then((frame) => {

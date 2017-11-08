@@ -15,13 +15,18 @@ rfid.on('ready', () => {
     console.log('Select App...')
     rfid.selectApp().then((data) => {
       console.log('Tag data:', data)
-      console.log(data.toString('utf8'))
       let results = JSON.parse(JSON.stringify(data)).data
       var id = ''
       for (var i in results) {
         id += results[i].toString(16)
       }
+
       console.log('id', id)
+      rfid.readCard().then((cardData) => {
+        console.log('card data', cardData)
+        console.log(JSON.stringify(cardData))
+      })
+
       emv.parse(id, function (data) {
         if (data != null) {
           console.log('DATA', data)

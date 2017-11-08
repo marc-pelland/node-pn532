@@ -232,6 +232,43 @@ class PN532 extends EventEmitter {
       })
   }
 
+  readCard (options) {
+    logger.info('Select...')
+
+    options = options || {}
+
+    var tagNumber = options.tagNumber || 0x01
+    var blockAddress = options.blockAddress || 0x01
+    var readRecord = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x0C, 0x00 ] //InDataExchange
+    var readRecordVisa = [ 0x40, 0x01, 0x00, 0xB2, 0x02, 0x0C, 0x00, 0x00 ]
+  	var readRecordMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x14, 0x00, 0x00 ]
+  	var readPaylogVisa = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x8C, 0x00, 0x00 ]
+  	var readPaylogMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x5C, 0x00, 0x00 ]
+
+    var commandBuffer = [
+      c.COMMAND_IN_DATA_EXCHANGE,
+      tagNumber
+    ]
+
+    commandBuffer = commandBuffer.concat(readRecordVisa)
+
+    return this.sendCommand(commandBuffer)
+      .then((frame) => {
+        var body = frame.getDataBody()
+        logger.debug('Frame data from block read:', util.inspect(body))
+
+        var status = body[0]
+
+        if (status === 0x13) {
+          logger.warn('The data format does not match to the specification.')
+        }
+        var block = body.slice(1, body.length - 1) // skip status byte and last byte (not part of memory)
+        // var unknown = body[body.length];
+
+        return block
+      })
+  }
+
   readNdefData () {
     logger.info('Reading data...')
 

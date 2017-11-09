@@ -16,6 +16,13 @@ API is subject to change until the 1.0.0 release
 
 and `npm install serialport` or `npm install i2c`
 
+### Credit Card EMV
+Added ability to parse data to read credit cards, still a work in progress
+- using FTDI cable and PN532
+- enabled Visa and Mastercard selection
+- extracting credit card number and expiration
+- TODO: find out if the cards in canada have names on them (getting blank value presently)
+
 ### Example
 
 #### UART (using [node-serialport](https://github.com/voodootikigod/node-serialport))

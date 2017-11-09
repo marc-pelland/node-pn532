@@ -268,9 +268,15 @@ class PN532 extends EventEmitter {
     options = options || {}
 
     var readCard = [ 0x00, 0xA4, 0x04, 0x00, 0x07, 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10, 0x00 ]
+    if (options.aip) {
+      readCard = [ 0x00, 0xA4, 0x04, 0x00, 0x07 ]
+      readCard = readCard.concat(options.aip)
+      readCard.push(0x00)
+    }
 
     var tagNumber = options.tagNumber || 0x01
     var blockAddress = options.blockAddress || 0x01
+
     var commandBuffer = [
       c.COMMAND_IN_DATA_EXCHANGE,
       tagNumber
@@ -302,98 +308,85 @@ class PN532 extends EventEmitter {
     var tagNumber = options.tagNumber || 0x01
     var blockAddress = options.blockAddress || 0x01
 
-        // 0x0C is between 12 and 28
-        // 0x02 is between 0 and 10
+    var readRecord = [ 0x00, 0xB2, 0x01, 0x0C, 0x00 ] // InDataExchange
 
-    var readRecord = [ 0x00, 0xB2, 0x02, 0x0D, 0x00 ] // InDataExchange
+    var commandBuffer = [
+      c.COMMAND_IN_DATA_EXCHANGE,
+      tagNumber
+    ]
+    commandBuffer = commandBuffer.concat(readRecord)
 
-    for (var m = 12; m <= 28; m++) {
-      for (var n = 0; n <= 12; n++) {
+    return this.sendCommand(commandBuffer)
+    .then((frame) => {
+      var body = frame.getDataBody()
+      logger.debug('Frame data from block read:', util.inspect(body))
 
+      var status = body[0]
+
+      if (status === 0x13) {
+        logger.warn('The data format does not match to the specification.')
       }
-    }
-
-
-    var readCardInfoVisa = [ 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10 ] // InDataExchange
-    var readRecordVisa = [ 0x00, 0xB2, 0x02, 0x0C, 0x00, 0x00 ]
-  	var readRecordMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x14, 0x00, 0x00 ]
-  	var readPaylogVisa = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x8C, 0x00, 0x00 ]
-  	var readPaylogMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x5C, 0x00, 0x00 ]
-    var readCardSize = [ 0x00, 0xA4, 0x04, 0x00, 0x07, 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10, 0x00, 0x00 ]
-    var readRecord2 = [0x00, 0xb2, 0x01, 0x0c, 0x00 ]
-    // var pdol = [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]
-    var req = [ 0x00, 0xb2, 0x03, 0x0c, 0x00 ]
-// A0 00 00 00 03 10 10
-    var commandBuffer = [
-      c.COMMAND_IN_DATA_EXCHANGE,
-      tagNumber
-    ]
-
-    commandBuffer = commandBuffer.concat(readRecord)
-
-    return this.sendCommand(commandBuffer)
-      .then((frame) => {
-        var body = frame.getDataBody()
-        logger.debug('Frame data from block read:', util.inspect(body))
-
-        var status = body[0]
-
-        if (status === 0x13) {
-          logger.warn('The data format does not match to the specification.')
-        }
-        var block = body.slice(1, body.length - 1) // skip status byte and last byte (not part of memory)
-        // var unknown = body[body.length];
-
-        return block
-      })
+      var block = body.slice(1, body.length - 1) // skip status byte and last byte (not part of memory)
+          // var unknown = body[body.length];
+      return block
+    })
   }
 
-  readCard2 (options) {
-    logger.info('Read Card Data...')
-
-    options = options || {}
-
-    var tagNumber = options.tagNumber || 0x01
-    var blockAddress = options.blockAddress || 0x01
-
-    // 0x0C is between 12 and 28
-    // 0x02 is between 0 and 10
-
-    var readRecord = [ 0x00, 0xB2, 0x00, 0x0C, 0x00 ] // InDataExchange
-
-    var readCardInfoVisa = [ 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10 ] // InDataExchange
-    var readRecordVisa = [ 0x00, 0xB2, 0x02, 0x0C, 0x00, 0x00 ]
-  	var readRecordMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x14, 0x00, 0x00 ]
-  	var readPaylogVisa = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x8C, 0x00, 0x00 ]
-  	var readPaylogMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x5C, 0x00, 0x00 ]
-    var readCardSize = [ 0x00, 0xA4, 0x04, 0x00, 0x07, 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10, 0x00, 0x00 ]
-    var readRecord2 = [0x00, 0xb2, 0x01, 0x0c, 0x00 ]
-    // var pdol = [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]
-    var req = [ 0x00, 0xb2, 0x03, 0x0c, 0x00 ]
-// A0 00 00 00 03 10 10
-    var commandBuffer = [
-      c.COMMAND_IN_DATA_EXCHANGE,
-      tagNumber
-    ]
-
-    commandBuffer = commandBuffer.concat(readRecord)
-
-    return this.sendCommand(commandBuffer)
-      .then((frame) => {
-        var body = frame.getDataBody()
-        logger.debug('Frame data from block read:', util.inspect(body))
-
-        var status = body[0]
-
-        if (status === 0x13) {
-          logger.warn('The data format does not match to the specification.')
-        }
-        var block = body.slice(1, body.length - 1) // skip status byte and last byte (not part of memory)
-        // var unknown = body[body.length];
-
-        return block
-      })
+  isVisa (aip) {
+    // return aip.indexOf('A000000003') !== -1
+    return aip.indexOf('A0000000031010') !== -1
   }
+
+  isMasterCard (aip) {
+    return aip.indexOf('A000000004') !== -1
+  }
+//
+//   readCard2 (options) {
+//     logger.info('Read Card Data...')
+//
+//     options = options || {}
+//
+//     var tagNumber = options.tagNumber || 0x01
+//     var blockAddress = options.blockAddress || 0x01
+//
+//     // 0x0C is between 12 and 28
+//     // 0x02 is between 0 and 10
+//
+//     var readRecord = [ 0x00, 0xB2, 0x00, 0x0C, 0x00 ] // InDataExchange
+//
+//     var readCardInfoVisa = [ 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10 ] // InDataExchange
+//     var readRecordVisa = [ 0x00, 0xB2, 0x02, 0x0C, 0x00, 0x00 ]
+//   	var readRecordMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x14, 0x00, 0x00 ]
+//   	var readPaylogVisa = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x8C, 0x00, 0x00 ]
+//   	var readPaylogMC = [ 0x40, 0x01, 0x00, 0xB2, 0x01, 0x5C, 0x00, 0x00 ]
+//     var readCardSize = [ 0x00, 0xA4, 0x04, 0x00, 0x07, 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10, 0x00, 0x00 ]
+//     var readRecord2 = [0x00, 0xb2, 0x01, 0x0c, 0x00 ]
+//     // var pdol = [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]
+//     var req = [ 0x00, 0xb2, 0x03, 0x0c, 0x00 ]
+// // A0 00 00 00 03 10 10
+//     var commandBuffer = [
+//       c.COMMAND_IN_DATA_EXCHANGE,
+//       tagNumber
+//     ]
+//
+//     commandBuffer = commandBuffer.concat(readRecord)
+//
+//     return this.sendCommand(commandBuffer)
+//       .then((frame) => {
+//         var body = frame.getDataBody()
+//         logger.debug('Frame data from block read:', util.inspect(body))
+//
+//         var status = body[0]
+//
+//         if (status === 0x13) {
+//           logger.warn('The data format does not match to the specification.')
+//         }
+//         var block = body.slice(1, body.length - 1) // skip status byte and last byte (not part of memory)
+//         // var unknown = body[body.length];
+//
+//         return block
+//       })
+//   }
 
   readNdefData () {
     logger.info('Reading data...')

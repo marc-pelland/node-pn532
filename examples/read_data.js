@@ -17,27 +17,36 @@ rfid.on('ready', () => {
       var response = rfid.parseApduResponse(data)
       var aip = response.find(0x4f)
 
-      console.log('Authenticating...')
+      console.log('selected...')
       // rfid.authenticateBlock(aip.getValue()).then(() => {
-        console.log(response)
-        console.log(aip.getValue())
+      console.log(response)
+      var aipValue = aip.getValue()
 
-        rfid.getPDOL().then((cardData) => {
-          console.log('card data', cardData.toString('utf8'))
-          var response2 = rfid.parseApduResponse(cardData)
-          console.log(response2)
-          console.log(JSON.stringify(cardData))
+      // mastercard or visa
+      var isCreditCard = rfid.isVisa(aipValue) || rfid.isVisa(aipValue)
+      console.log('is a valid credit card?', isCreditCard)
+      if (!isCreditCard) return false
 
-          rfid.readCard().then((details) => {
-            console.log(details)
-            console.log('card details', details.toString('utf8'))
-            var response3 = rfid.parseApduResponse(details)
-            console.log(response3)
-            console.log('child', response3.find('5F20').getValue())
+      // emv.aip(aip.getValue(), function (data) {
+      //   if (data.length > 0) {
+      //     console.log('EMV AIP DATA', data)
+      //   }
+      // })
 
+      var aipBuffer = []
+      for (var i = 0; i < aip.getValue().length; i += 2) { aipBuffer.push(parseInt(aip.getValue().substr(i, 2), 16)) }
 
-          })
+      rfid.getPDOL({aip: aipBuffer}).then((cardData) => {
+        var response2 = rfid.parseApduResponse(cardData)
+        console.log(response2)
+
+        rfid.readCard().then((details) => {
+          var response3 = rfid.parseApduResponse(details)
+          console.log(response3)
+          var track2 = response3.getChild()[0].getValue()
+          console.log("CARD NUMBER", track2.substr(0, 16), "EXPIRATION", track2.substr(17, 4))
         })
+      })
       // })
     })
   })

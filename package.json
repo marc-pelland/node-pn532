@@ -8,8 +8,6 @@
   "main": "src/pn532.js",
   "devDependencies": {},
   "dependencies": {
-    "emv": "^1.0.6",
-    "node-emv": "^1.0.22",
     "node-tlv": "^1.5.7",
     "serialport": "^6.0.4",
     "winston": "^0.8.0"

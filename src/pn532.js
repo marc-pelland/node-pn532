@@ -3,8 +3,8 @@ var util = require('util')
 var EventEmitter = require('events').EventEmitter
 
 var setupLogging = require('./logs')
-setupLogging('debug')
-// setupLogging(process.env.PN532_LOGGING)
+// setupLogging('debug')
+setupLogging(process.env.PN532_LOGGING)
 var logger = require('winston').loggers.get('pn532')
 
 var FrameEmitter = require('./frame_emitter').FrameEmitter
@@ -220,7 +220,11 @@ class PN532 extends EventEmitter {
 
     return this.sendCommand(commandBuffer)
       .then((frame) => {
+        // console.log(frame.data.body, 'rearear')
         var body = frame.getDataBody()
+        if (body.length === 0) {
+          return false
+        }
         logger.debug('Frame data from block read:', util.inspect(body))
 
         var status = body[0]
@@ -257,9 +261,7 @@ class PN532 extends EventEmitter {
         returnData.aid = returnData.aid.join('')
       }
     }
-    console.log('data information', returnData)
     return returnData
-    // 6f 2d 84 0e 32 50 41 59 2e 53 59 53 2e 44 44 46 30 31 a5 1b bf 0c 18 61 16 4f 07 a0 00 00 00 03 10 10 50 0b 56 69 73 61 20 43 72 65 64 69 74 90 00
   }
 
   getPDOL (options) {
@@ -297,6 +299,9 @@ class PN532 extends EventEmitter {
         // var unknown = body[body.length];
 
         return block
+      }).catch((e) => {
+        console.log(e)
+        return false
       })
   }
 
@@ -317,28 +322,35 @@ class PN532 extends EventEmitter {
     commandBuffer = commandBuffer.concat(readRecord)
 
     return this.sendCommand(commandBuffer)
-    .then((frame) => {
-      var body = frame.getDataBody()
-      logger.debug('Frame data from block read:', util.inspect(body))
+      .then((frame) => {
+        var body = frame.getDataBody()
+        logger.debug('Frame data from block read:', util.inspect(body))
 
-      var status = body[0]
+        var status = body[0]
 
-      if (status === 0x13) {
-        logger.warn('The data format does not match to the specification.')
-      }
-      var block = body.slice(1, body.length - 1) // skip status byte and last byte (not part of memory)
-          // var unknown = body[body.length];
-      return block
-    })
+        if (status === 0x13) {
+          logger.warn('The data format does not match to the specification.')
+        }
+        var block = body.slice(1, body.length - 1) // skip status byte and last byte (not part of memory)
+            // var unknown = body[body.length];
+        return block
+      }).catch((e) => {
+        console.log(e)
+        return false
+      })
   }
 
   isVisa (aip) {
     // return aip.indexOf('A000000003') !== -1
-    return aip.indexOf('A0000000031010') !== -1
+    return aip.indexOf('A000000003') !== -1
   }
 
   isMasterCard (aip) {
     return aip.indexOf('A000000004') !== -1
+  }
+
+  isDebitCard (aip) {
+    return aip.indexOf('A000000277') !== -1
   }
 //
 //   readCard2 (options) {
